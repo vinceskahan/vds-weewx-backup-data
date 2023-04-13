@@ -12,24 +12,31 @@
 # which user weewx runs as
 WEEWX_USER="pi"
 
-#--- you likely do not need to edit below here ---
-
+# set a few variables we'll use later
 WEEWX_DATA="/home/${WEEWX_USER}/weewx-data"
 WEEWX_CODE="/home/${WEEWX_USER}/.local"
 WEEWX_STARTUP_FILE="/etc/systemd/system/weewx.service"
-CRONTABS="/var/spool/cron/crontabs"
 
-BACKUP_LIST="${WEEWX_DATA} ${WEEWX_CODE} ${WEEWX_STARTUP_FILE} ${CRONTABS}"
+# uncomment one of the next two lines
+CRONTABS="/var/spool/cron/crontabs"                 # backup all crontabs (requires sudo)
+# CRONTABS="/var/spool/cron/crontabs/${WEEWX_USER}" # just the weewx user (no sudo required)
 
-echo "... backing up weewx software and data ..."
-echo "backup list: ${BACKUP_LIST}"
-
-# skip the archive, we save that nightly via cron
+# things in the above locations to skip
+#  - it is generally wise to back up your db separately and routinely
 EXCLUDE_OPTS="--exclude=/home/pi/weewx-data/archive"
+
+#--- you likely do not need to edit below here ---
+
+# assemble the backup list
+BACKUP_LIST="${WEEWX_DATA} ${WEEWX_CODE} ${WEEWX_STARTUP_FILE} ${CRONTABS}"
 
 # use a date-specific filename
 TODAY=`date +%Y_%m_%d_%H%M%S`
 OUTPUT_FILE="/var/tmp/weewx-complete-backup-${TODAY}.tgz"
+
+# do it to it
+echo "... backing up weewx software and data ..."
+echo "backup list: ${BACKUP_LIST}"
 
 # remove the '2>/dev/null' to see any warnings or errors
 # (recommended at least initially)
