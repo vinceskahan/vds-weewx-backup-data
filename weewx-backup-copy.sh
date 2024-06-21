@@ -3,52 +3,50 @@
 # weewx backup (originally based on wview)
 
 TODAY=`date +%Y_%m_%d`
+
+#----------- START EDITING HERE ------------------------
+
+# files to back up
+#    typically this would be only 'weewx.sdb'
+FILE_LIST="vp2.sdb mem.sdb purpleair.sdb ecowitt.sdb"
+
+# location of weewx database(s)
+ARCHIVE_DIR=/home/pi/weewx-data/archive
+
+# where to back up to
+DESTDIR=/home/pi/weewx-backups
+
+# scratch dir to work in
 TMPDIR="/var/tmp"
 
-ARCHIVE_FILE=weewx.sdb
-STATS_FILE=stats.sdb
-ARCHIVE_DIR=/home/weewx/archive
-DESTDIR=/mnt/weewxBackup/data
+#------------- STOP EDITING HERE -----------------------
 
-# if the archive isn't present, there is a typo above
-if [ ! -f $ARCHIVE_DIR/$ARCHIVE_FILE ]; then
-	logger "$0 exiting - srcfile not found"
-	exit 1
-fi
+# processing every file, we:
+#    cd to the archive dir and copy to a tmpdir
+#    cd to the tmpdir and gzip the copy up
+#    move the gzipped copy to the destination dir
+#    clean up the temporary unzipped copy
 
-# weewx v3 eliminates the stats file
-if [ -f $ARCHIVE_DIR/$STATS_FILE ]; then
-    STATS_PRESENT=1
-fi
+logger "WEEWX_BACKUP - starting"
+for f in ${FILE_LIST}
+do
+  cd ${ARCHIVE_DIR}
+  if [ -f ${f} ]
+  then
+     logger "WEEWX_BACKUP - backing up ${f}"
 
-# stash a copy to a scratch directory without stopping weewx
-# we rely on the os to ensure the file we copy is intact
-# (crossing fingers)
-cd $ARCHIVE_DIR
-cp $ARCHIVE_FILE ${TMPDIR}
-if [ x$STATS_PRESENT = "x1" ]; then
-   cp $STATS_FILE   ${TMPDIR}
-fi
+     cp ${f} ${TMPDIR}
+     cd ${TMPDIR}
 
-# now work on the stashed files to gzip them with a timestamp
-# this is done since it takes some time
-cd "${TMPDIR}"
-gzip -c ${ARCHIVE_FILE} > $ARCHIVE_FILE.$TODAY.gz
-mv $ARCHIVE_FILE.$TODAY.gz $DESTDIR
-if [ x$STATS_PRESENT = "x1" ]; then
-  gzip -c ${STATS_FILE} > $STATS_FILE.$TODAY.gz
-  mv $STATS_FILE.$TODAY.gz $DESTDIR
-fi
+     gzip -c ${f} > ${f}.${TODAY}.gz
 
-# always nice to leave positive log messages
+     mv ${f}.${TODAY}.gz ${DESTDIR}
+
+     rm -f ${TMPDIR}/${f}
+  else
+     logger -m "WEEWX_BACKUP - cannot find db file ${ARCHIVE_DIR}/${f}"
+  fi
+done
+
 logger "WEEWX_BACKUP - complete to $DESTDIR"
-
-# cleanup temporary stuff
-rm -f "${TMPDIR}"/$ARCHIVE_FILE.$TODAY.gz 
-rm -f "${TMPDIR}"/$ARCHIVE_FILE
-if [ x$STATS_PRESENT = "x1" ]; then
-  rm -f "${TMPDIR}"/$STATS_FILE.$TODAY.gz 
-  rm -f "${TMPDIR}"/$STATS_FILE
-fi
-
 
